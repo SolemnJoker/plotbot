@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.0)
+set(CMAKE_CXX_STANDARD 14)
+project(stick_figure_detect)
+find_package(OpenCV REQUIRED)
+message(STATUS "opencv version:${OpenCV_VERSION}")
+message(STATUS "opencv include dir:${OpenCV_INCLUDE_DIRS}")
+message(STATUS "opencv libs :${OpenCV_LIBS}")
+include_directories(${OpenCV_INCLUDE_DIRS})
+add_executable(stick_detect main.cpp stick_figure_detect.cpp)
+target_link_libraries(stick_detect ${OpenCV_LIBS})
+
