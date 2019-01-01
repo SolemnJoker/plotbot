@@ -16,6 +16,14 @@ int main(int argc, char** argv){
             cv::Mat src = cv::imread(argv[i]);
             StickFigure stick;
             auto res = stick.is_stick_figure(src, 20);
+            cv::Mat binary_mat = stick.to_binary_stick(20);
+            cv::imwrite(argv[i] + string("_gray.jpg"),binary_mat);
+            auto stick_compress = stick.compress();
+            stick_compress.save(argv[i] + string("_compress.sc"));
+            StickCompress sc_reader(argv[i] + string("_compress.sc"));
+            cv::Mat binary_mat2 = sc_reader.to_cv_mat();
+            cv::imwrite(argv[i] + string("_gray2.jpg"),binary_mat2);
+            
             cout<<(res?"True ":"False ");
         }
         cout<<endl;
