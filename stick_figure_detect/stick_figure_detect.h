@@ -2,6 +2,7 @@
 #include<memory>
 #include<vector>
 #include<string>
+#include<unordered_map>
 struct SPoint{
     uchar x;
     uchar y;
@@ -10,13 +11,14 @@ struct SPoint{
 class StickCompress{
 private:
     std::vector<int> box_;
-    std::vector<cv::Point> tmp_stick_point_;  
-public:
+    std::vector<cv::Point> stick_point_;  
     cv::Point offset = {0,0};
-    std::vector<uint16_t> stick_point;  
+    std::unordered_map<uchar,std::vector<uchar>> stick_point_compress_;
     int img_width;
     int img_height;
 
+
+public:
     StickCompress();
     StickCompress(std::string file_name);
     

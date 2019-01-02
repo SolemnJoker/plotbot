@@ -24,27 +24,41 @@ StickCompress::StickCompress(std::string file_name){
             ifs.close();
             return;
         }
-        int point_len = 0;
+        uchar line_count = 0;
         RIFS(img_width);
         RIFS(img_height);
-        RIFS(offset);
-        RIFS(point_len);
-        stick_point.resize(point_len);
-        ifs.read((char*)&stick_point[0], point_len*sizeof(stick_point[0]));
+        RIFS(line_count);
+        for (int i = 0;i < line_count;i++){
+            uchar row = 0;
+            uchar range_count = 0;
+            RIFS(row);
+            RIFS(range_count);
+            std::vector<uchar> cols_range(range_count);
+            ifs.read((char*)&cols_range[0], range_count);
+            stick_point_compress_[row] = cols_range;
+        }
     }
     ifs.close();
+    for(auto line:stick_point_compress_){
+        for(size_t i = 0;i < line.second.size();i+=2){
+            for(uchar j = line.second[i]; j < line.second[i+1];j++){
+                stick_point_.push_back({j,line.first});
+            }
+        }
+
+    }
 }
 
 void StickCompress::reset(){
     offset = {0,0};
-    stick_point.clear();  
-    tmp_stick_point_.clear();  
+    stick_point_.clear();  
+    stick_point_compress_.clear();
     box_ = {9999, 9999, 0, 0}; //letf, top, right, bottom
     img_width = 0;
     img_height = 0;
 }
 void StickCompress::push_stick(int x, int y){
-    tmp_stick_point_.push_back({x, y});
+    stick_point_.push_back({x, y});
     box_[0] > x ? box_[0] = x:box_[0];
     box_[2] < x ? box_[2] = x:box_[0];
     box_[1] > y ? box_[1] = y:box_[0];
@@ -63,48 +77,77 @@ bool StickCompress::scale_to_size(int  width ,int height){
     float src_wh_rate = src_width/float(src_height);
     float scale = 1.0;
     if (src_wh_rate > target_wh_rate){
-        scale = width / float(src_width);
+        scale = width / float(src_width + 1);
         offset.y = (height - src_height*scale)/2;
     }
     else{
-        scale = height / float(src_height);
+        scale = height / float(src_height +1);
         offset.x = (width - src_width*scale)/2;
     }
-    for(auto tp : tmp_stick_point_){
-        stick_point_map.insert(PACK_POS((uint16_t)(tp.x* scale),(uint16_t)(tp.y * scale)));
+    for(auto tp : stick_point_){
+        stick_point_map.insert(PACK_POS((uint16_t)((tp.x - box_[0])* scale + offset.x),(uint16_t)((tp.y - box_[1]) * scale + offset.y)));
     }
 
     for(auto p :stick_point_map){
-        stick_point.push_back(p);
-         /* std::cout<<UNPACK_X(p)<<", "<<UNPACK_Y(p)<<endl; */
+        stick_point_compress_[UNPACK_Y(p)].push_back(UNPACK_X(p));
+    }
+    for(auto& line : stick_point_compress_){
+        uchar start = line.second[0];
+        uchar end = line.second[0] + 1;
+        std::vector<uchar> compress_res;
+        for(size_t i = 1;i < line.second.size();i++){
+            if(end == line.second[i]){
+                end = line.second[i] + 1;
+            }
+            else{
+                compress_res.push_back(start);
+                compress_res.push_back(end);
+                start = line.second[i];
+                end = start+1;
+            }
+        }
+        compress_res.push_back(start);
+        compress_res.push_back(end);
+        line.second.swap(compress_res);
     }
 
 }
     
 
 std::vector<char> StickCompress::to_buf(){
-    if(stick_point.empty()){
+    if(stick_point_compress_.empty()){
        scale_to_size(256,196); 
        std::cout<<"did not scale img ,defualt scale to 256*106"<<std::endl;
     }
-    int buf_size = sizeof(head_bit) + sizeof(img_width)*2 +  sizeof(offset) + sizeof(int) +stick_point.size()*sizeof(stick_point[0]);
+    size_t compress_size = 0;
+    for(auto line: stick_point_compress_){
+        compress_size +=2;
+        compress_size +=line.second.size() ;
+    }
+    int buf_size = sizeof(head_bit) + sizeof(img_width)*2  + sizeof(int) +compress_size;
     std::vector<char> buf(buf_size);
     char* cur_ptr = &buf[0]; 
-    int  point_len = stick_point.size();
+    uchar line_count = stick_point_compress_.size();
 #define WRITE2BUF(data) memcpy(cur_ptr, &data, sizeof(data));cur_ptr += sizeof(data);
     WRITE2BUF(head_bit);
     WRITE2BUF(img_width);
     WRITE2BUF(img_height);
-    WRITE2BUF(offset);
-    WRITE2BUF(point_len);
-    memcpy(cur_ptr, &stick_point[0], sizeof(stick_point[0]) * stick_point.size());
+    WRITE2BUF(line_count);
+    for(auto line: stick_point_compress_){
+        uchar range_count = line.second.size();
+        WRITE2BUF(line.first);
+        WRITE2BUF(range_count);
+        memcpy(cur_ptr, &line.second[0], line.second.size());
+        cur_ptr += line.second.size();
+    }
+
     return buf;
 }
 
 cv::Mat StickCompress::to_cv_mat(){
     cv::Mat res = cv::Mat::zeros(img_height, img_width,  CV_8UC1);
-    for(auto p : stick_point){
-        res.at<uchar>(UNPACK_Y(p),UNPACK_X(p)) = 255;
+    for(auto p: stick_point_){
+        res.at<uchar>(p.y,p.x) = 255;
     }
     return res;
 }
@@ -132,6 +175,7 @@ public:
         hist[2] = cv::Mat::zeros(1, 256, CV_32SC1);
         
         stick_compress.reset();
+        
     }
 
     bool is_stick_figure(cv::Mat src_in, int threshold){
