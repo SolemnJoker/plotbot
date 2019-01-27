@@ -1,0 +1,3 @@
+[submodule "stick_figure_detect/3rd/opencv-swig"]
+	path = stick_figure_detect/3rd/opencv-swig
+	url = https://github.com/renatoGarcia/opencv-swig.git

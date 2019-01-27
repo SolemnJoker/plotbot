@@ -1,4 +1,4 @@
-#include "stick_figure_detect.h"
+#include "stick_figure.h"
 #include <iostream>
 #include <fstream>
 #include <string>

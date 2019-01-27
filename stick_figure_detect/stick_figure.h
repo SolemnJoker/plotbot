@@ -3,10 +3,6 @@
 #include<vector>
 #include<string>
 #include<unordered_map>
-struct SPoint{
-    uchar x;
-    uchar y;
-};
 
 class StickCompress{
 private:
@@ -16,7 +12,6 @@ private:
     std::unordered_map<uchar,std::vector<uchar>> stick_point_compress_;
     int img_width;
     int img_height;
-
 
 public:
     StickCompress();
@@ -36,9 +31,9 @@ class StickFigure{
 public:
     StickFigure();
     ~StickFigure();
+
     bool is_stick_figure(cv::Mat src, int threshold);
     cv::Mat to_binary_stick(int threshold);
     StickCompress& compress();
-private:
 };
 
