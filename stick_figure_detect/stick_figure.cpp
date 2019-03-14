@@ -11,6 +11,7 @@ const unsigned int head_bit = 0xF219A011;
 using namespace std;
 StickCompress::StickCompress(){
     reset();
+
 }
 StickCompress::StickCompress(std::string file_name){
     reset();
